@@ -8,7 +8,7 @@ import (
 	"encoding/binary"
 )
 
-func CreateIctiBridgeClient(ipaddress string, port string) *IctBridgeClient {
+func CreateIctBridgeClient(ipaddress string, port string) *IctBridgeClient {
 
 	conn,err  := net.Dial("tcp", ipaddress + ":" + port)
 	if(err != nil) {
@@ -24,8 +24,20 @@ type IctBridgeClient struct {
 
 func (ict IctBridgeClient) SendMessage (mess WrapperMessage) error {
 
-	return processMessage(ict.Conn, mess)
+	err := processMessage(ict.Conn, mess)
+	if(err != nil) {
+		return err
+	}
+	return nil
+}
 
+func (ict IctBridgeClient) SendQuery (mess WrapperMessage) (WrapperMessage, error) {
+
+	err := processMessage(ict.Conn, mess)
+	if(err != nil) {
+		return WrapperMessage{},err
+	}
+	return ict.GetMessage()
 }
 
 func processMessage(conn net.Conn, msg WrapperMessage) error {
@@ -49,7 +61,7 @@ func processMessage(conn net.Conn, msg WrapperMessage) error {
 	return nil
 }
 
-func (ict IctBridgeClient) GetMessage() (WrapperMessage,error) {
+func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 
 	reply := WrapperMessage{}
 	buf, err := readBytes(ict.Conn,4)
