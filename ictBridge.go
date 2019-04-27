@@ -1,71 +1,34 @@
-package main
+package ictBridge
 
 import (
 	"net"
-	"fmt"
 	"github.com/golang/protobuf/proto"
 	. "github.com/smiffy2/ictBridge/proto"
 	"bytes"
 	"encoding/binary"
 )
 
-func main() {
+func CreateIctiBridgeClient(ipaddress string, port string) *IctBridgeClient {
 
-	conn, err := net.Dial("tcp", "127.0.0.1")
-
+	conn,err  := net.Dial("tcp", ipaddress + ":" + port)
 	if(err != nil) {
-		fmt.Println("Unable to connect\n")
-		panic(err)
+		return nil
 	}
-
-	defer conn.Close()
-	
-
-	address := "TEST9ADDRESSTONYSDD99999999999999999999999999999999999999999999999999999999999999"
-	wrapperNewTransaction := WrapperMessage {
-		MessageType: WrapperMessage_SUBMIT_TRANSACTION_BUILDER_REQUEST, 
-		Msg:  &WrapperMessage_SubmitTransactionBuilderRequest{
-				&SubmitTransactionBuilderRequest{
-					TransactionBuilder:&TransactionBuilder {
-						Address:address,
-						Tag:"BRIDGE9TESTTONY999999999999",
-					},
-				},
-		},
-	}
-
-	sendMessage(conn, wrapperNewTransaction)
-	
-	wrapperQuery := WrapperMessage{
-		MessageType: WrapperMessage_FIND_TRANSACTIONS_BY_ADDRESS_REQUEST,
-		Msg: &WrapperMessage_FindTransactionsByAddressRequest{
-			&FindTransactionsByAddressRequest{Address:address}},
-	}
-
-	sendMessage(conn, wrapperQuery)
-	
-	reply, err := getMessage(conn)
-	
-	fmt.Println(reply.GetFindTransactionsByAddressResponse().Transaction[0].Tag)
-
-	wrapperTagQuery := WrapperMessage{
-                MessageType: WrapperMessage_FIND_TRANSACTIONS_BY_TAG_REQUEST,
-                Msg: &WrapperMessage_FindTransactionsByTagRequest{
-                        &FindTransactionsByTagRequest{Tag:"BRIDGE9TESTTONY999999999999"}},
-        }
-
-	sendMessage(conn, wrapperTagQuery)
-	reply, err = getMessage(conn)
-	if(err != nil) {
-		panic(err)
-	}
-	transaction := reply.GetFindTransactionsByTagResponse().Transaction
-	for _,v := range transaction {
-		fmt.Println(v.Address)
-	}	
+	return &IctBridgeClient{Conn:conn}
+ 
 }
 
-func sendMessage(conn net.Conn, msg WrapperMessage) error {
+type IctBridgeClient struct {
+	Conn net.Conn
+}
+
+func (ict IctBridgeClient) SendMessage (mess WrapperMessage) error {
+
+	return processMessage(ict.Conn, mess)
+
+}
+
+func processMessage(conn net.Conn, msg WrapperMessage) error {
 
 	data, err := proto.Marshal(&msg)
 	if(err != nil) {
@@ -86,15 +49,15 @@ func sendMessage(conn net.Conn, msg WrapperMessage) error {
 	return nil
 }
 
-func getMessage(conn net.Conn) (WrapperMessage,error) {
+func (ict IctBridgeClient) GetMessage() (WrapperMessage,error) {
 
 	reply := WrapperMessage{}
-	buf, err := readBytes(conn,4)
+	buf, err := readBytes(ict.Conn,4)
 	if(err != nil) {
 		return reply,err 
 	}
 	
-	buf ,err = readBytes(conn,bytesToInt(buf))
+	buf ,err = readBytes(ict.Conn,bytesToInt(buf))
 	if(err != nil) {
 		return reply,err
 	}
