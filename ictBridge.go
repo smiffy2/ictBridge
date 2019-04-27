@@ -11,7 +11,7 @@ import (
 
 func main() {
 
-	conn, err := net.Dial("tcp", "35.204.45.126:7331")
+	conn, err := net.Dial("tcp", "127.0.0.1")
 
 	if(err != nil) {
 		fmt.Println("Unable to connect\n")
