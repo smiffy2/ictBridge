@@ -40,27 +40,6 @@ func (ict IctBridgeClient) SendQuery (mess WrapperMessage) (WrapperMessage, erro
 	return ict.GetMessage()
 }
 
-func processMessage(conn net.Conn, msg WrapperMessage) error {
-
-	data, err := proto.Marshal(&msg)
-	if(err != nil) {
-		return err
-	}
-	buff := new(bytes.Buffer)
-	err = binary.Write(buff, binary.BigEndian, uint32(len(data)))
-
-	_, err = conn.Write(buff.Bytes())
-	if(err != nil) {
-		return err
-	}
-	_, err = conn.Write(data)
-	if(err != nil) {
-		return err
-	}
-
-	return nil
-}
-
 func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 
 	reply := WrapperMessage{}
@@ -80,6 +59,78 @@ func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 	}
 
 	return reply,nil	
+}
+
+func (ict *IctBridgeClient) QueryByAddress(address string) ([]*Transaction,error) {
+
+	wrapperQuery := WrapperMessage{
+                MessageType: WrapperMessage_FIND_TRANSACTIONS_BY_ADDRESS_REQUEST,
+                Msg: &WrapperMessage_FindTransactionsByAddressRequest{
+                        &FindTransactionsByAddressRequest{Address:address}},
+        }
+
+	reply,err := ict.SendQuery(wrapperQuery)
+
+	if(err != nil) {
+		return nil, err
+	}
+
+	return  reply.GetFindTransactionsByAddressResponse().Transaction,nil
+}
+
+func (ict *IctBridgeClient) QueryByTag(tag string) ([]*Transaction,error) {
+
+	wrapperQuery := WrapperMessage{
+                MessageType: WrapperMessage_FIND_TRANSACTIONS_BY_TAG_REQUEST,
+                Msg: &WrapperMessage_FindTransactionsByTagRequest{
+                        &FindTransactionsByTagRequest{Tag:tag}},
+        }
+
+	reply,err := ict.SendQuery(wrapperQuery)
+
+	if(err != nil) {
+		return nil, err
+	}
+
+	return  reply.GetFindTransactionsByTagResponse().Transaction,nil
+}
+
+func (ict *IctBridgeClient) SubmitTransaction(transaction TransactionBuilder) error {
+
+	wrapperNewTransaction := WrapperMessage {
+                MessageType: WrapperMessage_SUBMIT_TRANSACTION_BUILDER_REQUEST,
+                Msg:  &WrapperMessage_SubmitTransactionBuilderRequest{
+                                &SubmitTransactionBuilderRequest{
+                                        TransactionBuilder:&transaction,
+                                },
+                },
+        }
+
+	ict.SendMessage(wrapperNewTransaction)
+
+	return nil
+
+}
+
+func processMessage(conn net.Conn, msg WrapperMessage) error {
+
+	data, err := proto.Marshal(&msg)
+	if(err != nil) {
+		return err
+	}
+	buff := new(bytes.Buffer)
+	err = binary.Write(buff, binary.BigEndian, uint32(len(data)))
+
+	_, err = conn.Write(buff.Bytes())
+	if(err != nil) {
+		return err
+	}
+	_, err = conn.Write(data)
+	if(err != nil) {
+		return err
+	}
+
+	return nil
 }
 
 func readBytes(conn net.Conn, len int) ([]byte, error) {
