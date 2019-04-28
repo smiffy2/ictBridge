@@ -14,34 +14,22 @@ import (
 
 func main () {
 
-        client := ictBridge.CreateIctBridgeClient("35.204.80.128","7331")
+        client := ictBridge.CreateIctBridgeClient("127.0.0.1","7331")
 
-        address := "TEST9ADDRESSTONYSDE99999999999999999999999999999999999999999999999999999999999999"
-        wrapperNewTransaction := WrapperMessage {
-                MessageType: WrapperMessage_SUBMIT_TRANSACTION_BUILDER_REQUEST,
-                Msg:  &WrapperMessage_SubmitTransactionBuilderRequest{
-                                &SubmitTransactionBuilderRequest{
-                                        TransactionBuilder:&TransactionBuilder {
-                                                Address:address,
-                                                Tag:"BRIDGE9TESTTONY999999999999",
-                                        },
-                                },
-                },
-        }
+        address := "TEST9ADDRESSTONYSDJ99999999999999999999999999999999999999999999999999999999999999"
+        tag := "BRIDGE9TESTTONY999999999999"
+        transaction := TransactionBuilder { Address:address,Tag:tag}
 
-        client.SendMessage(wrapperNewTransaction)
+        client.SubmitTransaction(transaction)
 
-        wrapperTagQuery := WrapperMessage{
-                MessageType: WrapperMessage_FIND_TRANSACTIONS_BY_TAG_REQUEST,
-                Msg: &WrapperMessage_FindTransactionsByTagRequest{
-                        &FindTransactionsByTagRequest{Tag:"BRIDGE9TESTTONY999999999999"}},
-        }
-
-        reply,err := client.SendQuery(wrapperTagQuery)
+        trans,err := client.QueryByAddress(address)
         if(err != nil) {
                 panic(err)
         }
-        for _,v := range reply.GetFindTransactionsByTagResponse().Transaction {
+        fmt.Printf("Tag for address %v is %v\n",trans[0].Address,trans[0].Tag)
+
+        trans, err = client.QueryByTag(tag)
+        for _,v := range trans {
                 fmt.Println(v.Address)
         }
 }
