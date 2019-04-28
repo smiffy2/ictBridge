@@ -3,7 +3,7 @@
 To download : go get github.com/smiffy2/ictBridge
 
 Example of how to use
-```
+```go
 package main
 
 import (
