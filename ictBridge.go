@@ -47,8 +47,7 @@ func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 	if(err != nil) {
 		return reply,err 
 	}
-	
-	buf ,err = readBytes(ict.Conn,bytesToInt(buf))
+	buf ,err = readBytes(ict.Conn,BytesToInt(buf))
 	if(err != nil) {
 		return reply,err
 	}
@@ -74,8 +73,11 @@ func (ict *IctBridgeClient) QueryByAddress(address string) ([]*Transaction,error
 	if(err != nil) {
 		return nil, err
 	}
-
-	return  reply.GetFindTransactionsByAddressResponse().Transaction,nil
+	
+	if(reply.GetMsg() == nil) {
+		return nil,nil
+	}
+	return  reply.GetFindTransactionsByTagResponse().Transaction,nil
 }
 
 func (ict *IctBridgeClient) QueryByTag(tag string) ([]*Transaction,error) {
@@ -91,8 +93,11 @@ func (ict *IctBridgeClient) QueryByTag(tag string) ([]*Transaction,error) {
 	if(err != nil) {
 		return nil, err
 	}
+	if(reply.GetMsg() == nil) {
+		return nil,nil
+	}
 
-	return  reply.GetFindTransactionsByTagResponse().Transaction,nil
+	return reply.GetFindTransactionsByTagResponse().Transaction, nil
 }
 
 func (ict *IctBridgeClient) SubmitTransaction(transaction TransactionBuilder) error {
@@ -106,10 +111,7 @@ func (ict *IctBridgeClient) SubmitTransaction(transaction TransactionBuilder) er
                 },
         }
 
-	ict.SendMessage(wrapperNewTransaction)
-
-	return nil
-
+	return ict.SendMessage(wrapperNewTransaction)
 }
 
 func processMessage(conn net.Conn, msg WrapperMessage) error {
@@ -118,10 +120,7 @@ func processMessage(conn net.Conn, msg WrapperMessage) error {
 	if(err != nil) {
 		return err
 	}
-	buff := new(bytes.Buffer)
-	err = binary.Write(buff, binary.BigEndian, uint32(len(data)))
-
-	_, err = conn.Write(buff.Bytes())
+	_, err = conn.Write(IntToBytes(len(data)))
 	if(err != nil) {
 		return err
 	}
@@ -149,13 +148,20 @@ func readBytes(conn net.Conn, len int) ([]byte, error) {
 	return returnBytes, nil
 }
 
-func bytesToInt(in []byte) int {
+func BytesToInt(in []byte) int {
 
-	var m uint32 
-	err := binary.Read(bytes.NewBuffer(in), binary.BigEndian, &m)
-	if(err != nil) {
-		return 0
-	}
-	return int(m)
+        var m uint32
+        err := binary.Read(bytes.NewBuffer(in), binary.BigEndian, &m)
+        if(err != nil) {
+                return 0
+        }
+        return int(m)
 }
- 
+
+func IntToBytes(in int) []byte {
+
+        buff := new(bytes.Buffer)
+        binary.Write(buff, binary.BigEndian, uint32(in))
+        return buff.Bytes()
+}
+
