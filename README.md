@@ -3,7 +3,7 @@
 To download : go get github.com/smiffy2/ictBridge
 
 Example of how to use
-
+```
 package main
 
 import (
@@ -33,4 +33,4 @@ func main () {
                 fmt.Println(v.Address)
         }
 }
-
+```
