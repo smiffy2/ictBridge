@@ -8,7 +8,7 @@ import (
 
 func main () {
 
-	client := ictBridge.CreateIctBridgeClient("35.204.80.128","7331")
+	client := ictBridge.CreateIctBridgeClient("127.0.0.1","7331")
 
         address := "TEST9ADDRESSTONYSTJH9999999999999999999999999999999999999999999999999999999999999"
 	tag := "BRIDGE9TESTTONY999999999999"
