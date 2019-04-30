@@ -1,3 +1,4 @@
+//Package to help send data to the Ict Bridge.ixi interface
 package ictBridge
 
 import (
@@ -8,6 +9,7 @@ import (
 	"encoding/binary"
 )
 
+//CreateIctBridgeClient: Creates a IctBridgeClient using given IPAddress and port
 func CreateIctBridgeClient(ipaddress string, port string) *IctBridgeClient {
 
 	conn,err  := net.Dial("tcp", ipaddress + ":" + port)
@@ -18,10 +20,12 @@ func CreateIctBridgeClient(ipaddress string, port string) *IctBridgeClient {
  
 }
 
+//Class for IctBridgeClient
 type IctBridgeClient struct {
 	Conn net.Conn
 }
 
+//SendMessage: Sends WrapperMessage to Bridge.ixi
 func (ict IctBridgeClient) SendMessage (mess WrapperMessage) error {
 
 	err := processMessage(ict.Conn, mess)
@@ -31,6 +35,7 @@ func (ict IctBridgeClient) SendMessage (mess WrapperMessage) error {
 	return nil
 }
 
+//SendQuery: Sends a WrapperMessage to Bridge.ixi and waits for a rpely.
 func (ict IctBridgeClient) SendQuery (mess WrapperMessage) (WrapperMessage, error) {
 
 	err := processMessage(ict.Conn, mess)
@@ -40,6 +45,7 @@ func (ict IctBridgeClient) SendQuery (mess WrapperMessage) (WrapperMessage, erro
 	return ict.GetMessage()
 }
 
+//GetMessagë: Wait for message from Ict 
 func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 
 	reply := WrapperMessage{}
@@ -60,6 +66,7 @@ func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 	return reply,nil	
 }
 
+//QueryByAddress: Send a request to Bridge.ixi to ask for information on an Address, wait for resposnse
 func (ict *IctBridgeClient) QueryByAddress(address string) ([]*Transaction,error) {
 
 	wrapperQuery := WrapperMessage{
@@ -80,6 +87,7 @@ func (ict *IctBridgeClient) QueryByAddress(address string) ([]*Transaction,error
 	return  reply.GetFindTransactionsByTagResponse().Transaction,nil
 }
 
+//QueryByTag: Send a requst to Bridge.ixi to request for data on a given tag, wait for response
 func (ict *IctBridgeClient) QueryByTag(tag string) ([]*Transaction,error) {
 
 	wrapperQuery := WrapperMessage{
@@ -100,6 +108,7 @@ func (ict *IctBridgeClient) QueryByTag(tag string) ([]*Transaction,error) {
 	return reply.GetFindTransactionsByTagResponse().Transaction, nil
 }
 
+//SubmitTransaction: Send a transaction to Ict
 func (ict *IctBridgeClient) SubmitTransaction(transaction TransactionBuilder) error {
 
 	wrapperNewTransaction := WrapperMessage {
@@ -148,6 +157,7 @@ func readBytes(conn net.Conn, len int) ([]byte, error) {
 	return returnBytes, nil
 }
 
+//BytesToInt: Helper method to convert bytes to int.
 func BytesToInt(in []byte) int {
 
         var m uint32
@@ -158,6 +168,7 @@ func BytesToInt(in []byte) int {
         return int(m)
 }
 
+//IntToBytes: Helper method to get byte representation of an int.
 func IntToBytes(in int) []byte {
 
         buff := new(bytes.Buffer)
