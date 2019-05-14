@@ -11,8 +11,8 @@ func main () {
 	client := ictBridge.CreateIctBridgeClient("127.0.0.1","7331")
 
         address := "TEST9ADDRESSTONYSTJH9999999999999999999999999999999999999999999999999999999999999"
-	tag := "BRIDGE9TESTTONY999999999999"
-        transaction := TransactionBuilder { Address:address,Tag:tag,Value:ictBridge.IntToBytes(500)}
+				tag := "BRIDGE9TESTTONY999999999999"
+        transaction := TransactionBuilder { Address:address,Tag:tag,Value:ictBridge.IntToBytes(500),IsBundleHead:true,IsBundleTail:true}
 
         client.SubmitTransaction(transaction)
 
