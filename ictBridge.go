@@ -1,3 +1,4 @@
+//Package to help send data to the Ict Bridge.ixi interface
 package ictBridge
 
 import (
@@ -8,6 +9,7 @@ import (
 	"encoding/binary"
 )
 
+//CreateIctBridgeClient: Creates a IctBridgeClient using given IPAddress and port
 func CreateIctBridgeClient(ipaddress string, port string) *IctBridgeClient {
 
 	conn,err  := net.Dial("tcp", ipaddress + ":" + port)
@@ -18,10 +20,12 @@ func CreateIctBridgeClient(ipaddress string, port string) *IctBridgeClient {
  
 }
 
+//Class for IctBridgeClient
 type IctBridgeClient struct {
 	Conn net.Conn
 }
 
+//SendMessage: Sends WrapperMessage to Bridge.ixi
 func (ict IctBridgeClient) SendMessage (mess WrapperMessage) error {
 
 	err := processMessage(ict.Conn, mess)
@@ -31,6 +35,7 @@ func (ict IctBridgeClient) SendMessage (mess WrapperMessage) error {
 	return nil
 }
 
+//SendQuery: Sends a WrapperMessage to Bridge.ixi and waits for a rpely.
 func (ict IctBridgeClient) SendQuery (mess WrapperMessage) (WrapperMessage, error) {
 
 	err := processMessage(ict.Conn, mess)
@@ -40,6 +45,7 @@ func (ict IctBridgeClient) SendQuery (mess WrapperMessage) (WrapperMessage, erro
 	return ict.GetMessage()
 }
 
+//GetMessagë: Wait for message from Ict 
 func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 
 	reply := WrapperMessage{}
@@ -47,8 +53,7 @@ func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 	if(err != nil) {
 		return reply,err 
 	}
-	
-	buf ,err = readBytes(ict.Conn,bytesToInt(buf))
+	buf ,err = readBytes(ict.Conn,BytesToInt(buf))
 	if(err != nil) {
 		return reply,err
 	}
@@ -61,6 +66,7 @@ func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 	return reply,nil	
 }
 
+//QueryByAddress: Send a request to Bridge.ixi to ask for information on an Address, wait for resposnse
 func (ict *IctBridgeClient) QueryByAddress(address string) ([]*Transaction,error) {
 
 	wrapperQuery := WrapperMessage{
@@ -74,10 +80,14 @@ func (ict *IctBridgeClient) QueryByAddress(address string) ([]*Transaction,error
 	if(err != nil) {
 		return nil, err
 	}
-
-	return  reply.GetFindTransactionsByAddressResponse().Transaction,nil
+	
+	if(reply.GetMsg() == nil) {
+		return nil,nil
+	}
+	return  reply.GetFindTransactionsByTagResponse().Transaction,nil
 }
 
+//QueryByTag: Send a requst to Bridge.ixi to request for data on a given tag, wait for response
 func (ict *IctBridgeClient) QueryByTag(tag string) ([]*Transaction,error) {
 
 	wrapperQuery := WrapperMessage{
@@ -91,10 +101,14 @@ func (ict *IctBridgeClient) QueryByTag(tag string) ([]*Transaction,error) {
 	if(err != nil) {
 		return nil, err
 	}
+	if(reply.GetMsg() == nil) {
+		return nil,nil
+	}
 
-	return  reply.GetFindTransactionsByTagResponse().Transaction,nil
+	return reply.GetFindTransactionsByTagResponse().Transaction, nil
 }
 
+//SubmitTransaction: Send a transaction to Ict
 func (ict *IctBridgeClient) SubmitTransaction(transaction TransactionBuilder) error {
 
 	wrapperNewTransaction := WrapperMessage {
@@ -106,10 +120,7 @@ func (ict *IctBridgeClient) SubmitTransaction(transaction TransactionBuilder) er
                 },
         }
 
-	ict.SendMessage(wrapperNewTransaction)
-
-	return nil
-
+	return ict.SendMessage(wrapperNewTransaction)
 }
 
 func processMessage(conn net.Conn, msg WrapperMessage) error {
@@ -118,10 +129,7 @@ func processMessage(conn net.Conn, msg WrapperMessage) error {
 	if(err != nil) {
 		return err
 	}
-	buff := new(bytes.Buffer)
-	err = binary.Write(buff, binary.BigEndian, uint32(len(data)))
-
-	_, err = conn.Write(buff.Bytes())
+	_, err = conn.Write(IntToBytes(len(data)))
 	if(err != nil) {
 		return err
 	}
@@ -149,13 +157,22 @@ func readBytes(conn net.Conn, len int) ([]byte, error) {
 	return returnBytes, nil
 }
 
-func bytesToInt(in []byte) int {
+//BytesToInt: Helper method to convert bytes to int.
+func BytesToInt(in []byte) int {
 
-	var m uint32 
-	err := binary.Read(bytes.NewBuffer(in), binary.BigEndian, &m)
-	if(err != nil) {
-		return 0
-	}
-	return int(m)
+        var m uint32
+        err := binary.Read(bytes.NewBuffer(in), binary.BigEndian, &m)
+        if(err != nil) {
+                return 0
+        }
+        return int(m)
 }
- 
+
+//IntToBytes: Helper method to get byte representation of an int.
+func IntToBytes(in int) []byte {
+
+        buff := new(bytes.Buffer)
+        binary.Write(buff, binary.BigEndian, uint32(in))
+        return buff.Bytes()
+}
+
