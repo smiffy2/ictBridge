@@ -14,11 +14,11 @@ import (
 
 func main () {
 
-        client := ictBridge.CreateIctBridgeClient("127.0.0.1","7331")
+        client := ictBridge.CreateIctBridgeClient("localhost","7331")
 
         address := "TEST9ADDRESSTONYSDJ99999999999999999999999999999999999999999999999999999999999999"
         tag := "BRIDGE9TESTTONY999999999999"
-        transaction := TransactionBuilder { Address:address,Tag:tag}
+        transaction := TransactionBuilder { Address:address,Tag:tag,IsBundleHead:true,IsBundleTail:true}
 
         client.SubmitTransaction(transaction)
 
