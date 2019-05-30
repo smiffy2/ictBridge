@@ -8,29 +8,33 @@ package main
 
 import (
         "fmt"
+
         "github.com/smiffy2/ictBridge"
-        . "github.com/smiffy2/ictBridge/proto"
+        "time"
 )
 
-func main () {
+func main() {
+
+        tag := "BRIDGE9TESTTONYA99999999999"
+        msg := ictBridge.IctBridgeMessage{Address:"TEST9ADDRESSTONYSTKHG9999999999999999999999999999999999
+99999999999999999999999999",Tag:tag,Message:"Hello Tony Again, one last message",Publish:true}
 
         client := ictBridge.CreateIctBridgeClient("127.0.0.1","7331")
 
-        address := "TEST9ADDRESSTONYSDJ99999999999999999999999999999999999999999999999999999999999999"
-        tag := "BRIDGE9TESTTONY999999999999"
-        transaction := TransactionBuilder { Address:address,Tag:tag}
-
-        client.SubmitTransaction(transaction)
-
-        trans,err := client.QueryByAddress(address)
+        client.SubmitMessage(msg)
+     
+	retTrans, err := client.QueryByTag(tag)
         if(err != nil) {
                 panic(err)
         }
-        fmt.Printf("Tag for address %v is %v\n",trans[0].Address,trans[0].Tag)
-
-        trans, err = client.QueryByTag(tag)
-        for _,v := range trans {
-                fmt.Println(v.Address)
+        if(retTrans != nil) {
+                for _,v := range retTrans {
+                        fmt.Println(v.Message)
+                }
+        } else {
+                fmt.Println("Nothing found")
         }
+
 }
+
 ```
