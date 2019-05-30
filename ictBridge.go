@@ -3,30 +3,83 @@ package ictBridge
 
 import (
 	"net"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	. "github.com/smiffy2/ictBridge/proto"
+	. "github.com/iotaledger/iota.go/converter"
+	"github.com/iotaledger/iota.go/address"
+	"github.com/iotaledger/iota.go/trinary"
 	"bytes"
 	"encoding/binary"
+	"time"
+	"math/rand"
 )
 
 //CreateIctBridgeClient: Creates a IctBridgeClient using given IPAddress and port
 func CreateIctBridgeClient(ipaddress string, port string) *IctBridgeClient {
 
 	conn,err  := net.Dial("tcp", ipaddress + ":" + port)
+	seed := generateRandomSeed()
 	if(err != nil) {
 		return nil
 	}
-	return &IctBridgeClient{Conn:conn}
+	return &IctBridgeClient{Conn:conn,seed:seed}
  
 }
 
-//Class for IctBridgeClient
+//struct for IctBridgeClient
 type IctBridgeClient struct {
 	Conn net.Conn
+	seed string
+	currentIndex uint64
+}
+
+//struct for IctBridgeMessage
+type IctBridgeMessage struct {
+	Address string
+	Tag string
+	Message string
+	Publish bool
+	Value int
+}
+
+func createTransactionFromMsg(msg IctBridgeMessage) (TransactionBuilder,error) {
+
+	var transaction TransactionBuilder
+	var err error
+	if(msg.Address == "") {
+		trytesAddress,err := address.GenerateAddresses(generateRandomSeed(),1,1,2)
+		if(err != nil) {
+			return TransactionBuilder{},err
+		}
+		transaction.Address = trytesAddress[0]
+	} else {
+		transaction.Address = msg.Address
+	}
+	if(msg.Message != "") {
+		msg.Message,err = ASCIIToTrytes(msg.Message)
+		if(err != nil) {
+			return TransactionBuilder{},err
+		}
+		transaction.SignatureFragments = trinary.Pad(msg.Message,2187)
+	}
+
+	if(msg.Value > 0) {
+		transaction.Value = IntToBytes(msg.Value)
+	}	
+
+	transaction.Tag = msg.Tag
+
+	if(msg.Publish) {
+		transaction.IsBundleHead = true
+		transaction.IsBundleTail = true
+	}
+
+	return transaction,nil
 }
 
 //SendMessage: Sends WrapperMessage to Bridge.ixi
-func (ict IctBridgeClient) SendMessage (mess WrapperMessage) error {
+func (ict IctBridgeClient) sendMessage (mess WrapperMessage) error {
 
 	err := processMessage(ict.Conn, mess)
 	if(err != nil) {
@@ -84,11 +137,11 @@ func (ict *IctBridgeClient) QueryByAddress(address string) ([]*Transaction,error
 	if(reply.GetMsg() == nil) {
 		return nil,nil
 	}
-	return  reply.GetFindTransactionsByTagResponse().Transaction,nil
+	return  reply.GetFindTransactionsByAddressResponse().Transaction,nil
 }
 
 //QueryByTag: Send a requst to Bridge.ixi to request for data on a given tag, wait for response
-func (ict *IctBridgeClient) QueryByTag(tag string) ([]*Transaction,error) {
+func (ict *IctBridgeClient) QueryByTag(tag string) ([]IctBridgeMessage,error) {
 
 	wrapperQuery := WrapperMessage{
                 MessageType: WrapperMessage_FIND_TRANSACTIONS_BY_TAG_REQUEST,
@@ -105,12 +158,36 @@ func (ict *IctBridgeClient) QueryByTag(tag string) ([]*Transaction,error) {
 		return nil,nil
 	}
 
-	return reply.GetFindTransactionsByTagResponse().Transaction, nil
+	trans :=  reply.GetFindTransactionsByTagResponse().Transaction
+	if(trans == nil) {
+		return nil,nil
+	}
+
+	//messages := make([]IctBridgeMessage,len(trans))
+	var messages []IctBridgeMessage
+
+	for _,v := range trans {
+		mess := IctBridgeMessage{}
+		mess.Message,err = TrytesToASCII(v.SignatureFragments + "9")
+		if(err != nil) {
+			fmt.Println(err)
+			mess.Message = ""
+		}
+		mess.Tag = v.Tag
+		mess.Address = v.Address
+		messages = append(messages,mess)		
+	}
+
+	return messages,nil
 }
 
 //SubmitTransaction: Send a transaction to Ict
-func (ict *IctBridgeClient) SubmitTransaction(transaction TransactionBuilder) error {
+func (ict *IctBridgeClient) SubmitMessage(mess IctBridgeMessage) error {
 
+	transaction,err := createTransactionFromMsg(mess)
+	if(err != nil) {
+		return err
+	}
 	wrapperNewTransaction := WrapperMessage {
                 MessageType: WrapperMessage_SUBMIT_TRANSACTION_BUILDER_REQUEST,
                 Msg:  &WrapperMessage_SubmitTransactionBuilderRequest{
@@ -120,7 +197,7 @@ func (ict *IctBridgeClient) SubmitTransaction(transaction TransactionBuilder) er
                 },
         }
 
-	return ict.SendMessage(wrapperNewTransaction)
+	return ict.sendMessage(wrapperNewTransaction)
 }
 
 func processMessage(conn net.Conn, msg WrapperMessage) error {
@@ -176,3 +253,14 @@ func IntToBytes(in int) []byte {
         return buff.Bytes()
 }
 
+func generateRandomSeed() (string) {
+
+	validCharacters := "ABCDEFGHIJKLMNOPQRSTUVWXYZ9"
+	rand.Seed(time.Now().UnixNano())
+	var seed  string
+	for i:=0; i<81; i++ {
+		num := rand.Intn(26)
+		seed = seed + validCharacters[num:num+1]
+	}
+	return seed
+}
