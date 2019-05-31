@@ -120,7 +120,7 @@ func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
 }
 
 //QueryByAddress: Send a request to Bridge.ixi to ask for information on an Address, wait for resposnse
-func (ict *IctBridgeClient) QueryByAddress(address string) ([]*Transaction,error) {
+func (ict *IctBridgeClient) QueryByAddress(address string) ([]IctBridgeMessage,error) {
 
 	wrapperQuery := WrapperMessage{
                 MessageType: WrapperMessage_FIND_TRANSACTIONS_BY_ADDRESS_REQUEST,
@@ -137,7 +137,28 @@ func (ict *IctBridgeClient) QueryByAddress(address string) ([]*Transaction,error
 	if(reply.GetMsg() == nil) {
 		return nil,nil
 	}
-	return  reply.GetFindTransactionsByAddressResponse().Transaction,nil
+	
+	trans :=  reply.GetFindTransactionsByAddressResponse().Transaction
+        if(trans == nil) {
+                return nil,nil
+        }
+
+        var messages []IctBridgeMessage
+
+        for _,v := range trans {
+                mess := IctBridgeMessage{}
+                mess.Message,err = TrytesToASCII(v.SignatureFragments + "9")
+                if(err != nil) {
+                        fmt.Println(err)
+                        mess.Message = ""
+                }
+                mess.Tag = v.Tag
+                mess.Address = v.Address
+                messages = append(messages,mess)
+        }
+
+        return messages,nil
+
 }
 
 //QueryByTag: Send a requst to Bridge.ixi to request for data on a given tag, wait for response
@@ -163,7 +184,6 @@ func (ict *IctBridgeClient) QueryByTag(tag string) ([]IctBridgeMessage,error) {
 		return nil,nil
 	}
 
-	//messages := make([]IctBridgeMessage,len(trans))
 	var messages []IctBridgeMessage
 
 	for _,v := range trans {
