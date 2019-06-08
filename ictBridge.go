@@ -43,6 +43,74 @@ type IctBridgeMessage struct {
 	Value int
 }
 
+//AddEffectListener: Adds a listener
+func (ict IctBridgeClient) AddEffectListener(env string) (error) {
+
+        wrapper := WrapperMessage{
+                MessageType: WrapperMessage_ADD_EFFECT_LISTENER_REQUEST,
+                Msg: &WrapperMessage_AddEffectListenerRequest{
+                        &AddEffectListenerRequest{Environment:env}},
+        }
+	
+	err := processMessage(ict.Conn,wrapper)
+	if(err != nil) {
+		return err
+	}
+	return nil
+}
+
+//SubmitEffectMessage: Submits a Effect to ict 
+func (ict IctBridgeClient) SubmitEffectMessage(env string, effect string) error {
+	
+	wrapper := WrapperMessage{
+                MessageType: WrapperMessage_SUBMIT_EFFECT_REQUEST,
+                Msg: &WrapperMessage_SubmitEffectRequest{
+                        &SubmitEffectRequest{Environment:env,Effect:effect}},
+        }
+
+	err := processMessage(ict.Conn,wrapper)
+
+	return err
+	
+}
+
+//TakeEffect: Takes an effect from the queue
+func (ict IctBridgeClient) TakeEffect(env string) (string,error) {
+
+        wrapperQuery := WrapperMessage{
+                MessageType: WrapperMessage_TAKE_EFFECT_REQUEST,
+                Msg: &WrapperMessage_TakeEffectRequest{
+                        &TakeEffectRequest{Environment:env}},
+        }
+
+        reply,err := ict.SendQuery(wrapperQuery)
+
+        if(err != nil) {
+                return "", err
+        }
+
+	return reply.GetTakeEffectResponse().GetEffect(), nil
+	
+}
+
+func (ict IctBridgeClient) PollEffect(env string) (string,error) {
+
+        wrapperQuery := WrapperMessage{
+                MessageType: WrapperMessage_POLL_EFFECT_REQUEST,
+                Msg: &WrapperMessage_PollEffectRequest{
+                        &PollEffectRequest{Environment:env}},
+        }
+
+        reply,err := ict.SendQuery(wrapperQuery)
+
+        if(err != nil) {
+                return "", err
+        }
+
+        return reply.GetPollEffectResponse().GetEffect(), nil
+
+}
+
 func createTransactionFromMsg(msg IctBridgeMessage) (TransactionBuilder,error) {
 
 	var transaction TransactionBuilder
@@ -95,11 +163,11 @@ func (ict IctBridgeClient) SendQuery (mess WrapperMessage) (WrapperMessage, erro
 	if(err != nil) {
 		return WrapperMessage{},err
 	}
-	return ict.GetMessage()
+	return ict.getMessage()
 }
 
-//GetMessagë: Wait for message from Ict 
-func (ict *IctBridgeClient) GetMessage() (WrapperMessage,error) {
+//getMessagë: Wait for message from Ict 
+func (ict *IctBridgeClient) getMessage() (WrapperMessage,error) {
 
 	reply := WrapperMessage{}
 	buf, err := readBytes(ict.Conn,4)
